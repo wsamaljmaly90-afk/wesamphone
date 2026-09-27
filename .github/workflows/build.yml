@@ -17,9 +17,10 @@ jobs:
 
       - name: Prepare Structure
         run: |
-          mkdir -p lib
-          if [ -f main.dart ]; then mv main.dart lib/; fi
+          mkdir -p backup_code
+          if [ -f main.dart ]; then cp main.dart backup_code/; fi
           flutter create . --overwrite
+          if [ -f backup_code/main.dart ]; then cp backup_code/main.dart lib/main.dart; fi
 
       - name: Install dependencies
         run: flutter pub get
