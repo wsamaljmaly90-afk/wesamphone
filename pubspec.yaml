@@ -14,6 +14,11 @@ dependencies:
   crypto: ^3.0.3
   google_sign_in: ^6.2.1
   ota_update: ^5.0.1
+  
+  # مكتبات الخادم والتسجيل التلقائي
+  firebase_core: ^2.27.0
+  cloud_firestore: ^4.15.8
+  device_info_plus: ^9.1.1
 
 dev_dependencies:
   flutter_test:
@@ -22,4 +27,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
