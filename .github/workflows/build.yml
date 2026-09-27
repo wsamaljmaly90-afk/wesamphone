@@ -15,12 +15,13 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Prepare Structure
+      - name: Prepare Project Structure & Dependencies
         run: |
           mkdir -p backup_code
           if [ -f main.dart ]; then cp main.dart backup_code/; fi
           flutter create . --overwrite
           if [ -f backup_code/main.dart ]; then cp backup_code/main.dart lib/main.dart; fi
+          flutter pub add shared_preferences crypto
 
       - name: Install dependencies
         run: flutter pub get
