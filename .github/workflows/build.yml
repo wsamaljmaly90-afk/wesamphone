@@ -15,6 +15,12 @@ jobs:
         with:
           channel: 'stable'
 
+      - name: Prepare Structure
+        run: |
+          mkdir -p lib
+          if [ -f main.dart ]; then mv main.dart lib/; fi
+          flutter create . --overwrite
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -26,4 +32,3 @@ jobs:
         with:
           name: WesamPhone-App
           path: build/app/outputs/flutter-apk/app-release.apk
-
