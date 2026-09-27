@@ -1,14 +1,8 @@
-// =============================================================================
-// WesamPhone & Academy - المنصة الرقمية المتكاملة للبرمجة والتعليم
-// =============================================================================
-
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:crypto/crypto.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:ota_update/OtaUpdate.dart';
 
 void main() {
   runApp(const WesamEnterpriseApp());
@@ -20,38 +14,18 @@ class WesamEnterpriseApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'شركة وسام للبرمجة والتعليم',
+      title: 'وسام للتطوير البرمجي',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF5C3BFF),
-          brightness: Brightness.light,
-        ),
         useMaterial3: true,
         fontFamily: 'Roboto',
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: const Color(0xFFF4F5F9),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xFF5C3BFF), width: 2),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF6C5CE7),
+          primary: const Color(0xFF6C5CE7),
+          secondary: const Color(0xFF00CEC9),
+          surface: const Color(0xFFF8F9FA),
         ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF5C3BFF),
-            foregroundColor: Colors.white,
-            elevation: 4,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-        ),
+        scaffoldBackgroundColor: const Color(0xFFF4F6F9),
       ),
       builder: (context, child) {
         return Directionality(
@@ -64,23 +38,18 @@ class WesamEnterpriseApp extends StatelessWidget {
   }
 }
 
-// =============================================================================
-// إدارة البيانات الجلسات والـ PIN التلقائي
-// =============================================================================
+/* ==================== قاعدة البيانات المحلية ==================== */
 class LocalDB {
-  static const _kUsers = 'wp_users_v2';
-  static const _kSession = 'wp_session_v2';
-  static const _kMessages = 'wp_messages_v2';
-  static const _kPinCode = 'wp_user_pin';
+  static const _kUsers = 'wp_users_v4';
+  static const _kSession = 'wp_session_v4';
+  static const _kMessages = 'wp_messages_v4';
 
   static String hashPassword(String password, String salt) {
     final bytes = utf8.encode('$salt::$password');
     return sha256.convert(bytes).toString();
   }
 
-  static String generateSalt() {
-    return DateTime.now().millisecondsSinceEpoch.toString();
-  }
+  static String generateSalt() => DateTime.now().millisecondsSinceEpoch.toString();
 
   static Future<List<Map<String, dynamic>>> getUsers() async {
     final prefs = await SharedPreferences.getInstance();
@@ -119,16 +88,6 @@ class LocalDB {
     }
   }
 
-  static Future<void> setPinCode(String pin) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kPinCode, pin);
-  }
-
-  static Future<String?> getPinCode() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_kPinCode);
-  }
-
   static Future<List<Map<String, dynamic>>> getMessages() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_kMessages);
@@ -147,9 +106,7 @@ class LocalDB {
   }
 }
 
-// =============================================================================
-// بوابة التحقق والتحقق بـ PIN
-// =============================================================================
+/* ==================== محدد الجلسة ==================== */
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
@@ -159,22 +116,19 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   Map<String, dynamic>? _session;
-  String? _pinCode;
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _checkSession();
+    _check();
   }
 
-  Future<void> _checkSession() async {
+  void _check() async {
     final session = await LocalDB.getSession();
-    final pin = await LocalDB.getPinCode();
     if (mounted) {
       setState(() {
         _session = session;
-        _pinCode = pin;
         _loading = false;
       });
     }
@@ -184,294 +138,235 @@ class _AuthWrapperState extends State<AuthWrapper> {
   Widget build(BuildContext context) {
     if (_loading) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: Color(0xFF5C3BFF))),
+        body: Center(child: CircularProgressIndicator(color: Color(0xFF6C5CE7))),
       );
     }
     if (_session != null) {
-      if (_pinCode != null) {
-        return PinLockScreen(session: _session!, savedPin: _pinCode!);
-      }
-      return MainNavigationScreen(session: _session!);
+      return MainDashboardScreen(session: _session!);
     }
-    return const AuthScreen();
+    return const GlassAuthScreen();
   }
 }
 
-// =============================================================================
-// شاشة تأكيد الـ PIN للدخول السريع
-// =============================================================================
-class PinLockScreen extends StatefulWidget {
-  final Map<String, dynamic> session;
-  final String savedPin;
-  const PinLockScreen({super.key, required this.session, required this.savedPin});
+/* ==================== شاشة تسجيل الدخول الاحترافية ==================== */
+class GlassAuthScreen extends StatefulWidget {
+  const GlassAuthScreen({super.key});
 
   @override
-  State<PinLockScreen> createState() => _PinLockScreenState();
+  State<GlassAuthScreen> createState() => _GlassAuthScreenState();
 }
 
-class _PinLockScreenState extends State<PinLockScreen> {
-  final _pinController = TextEditingController();
-
-  void _verifyPin() {
-    if (_pinController.text == widget.savedPin) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => MainNavigationScreen(session: widget.session)),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('رمز السر غير صحيح!'), backgroundColor: Colors.red),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.lock_outline_rounded, size: 80, color: Color(0xFF5C3BFF)),
-              const SizedBox(height: 16),
-              Text('أهلاً بعودتك، ${widget.session['username']}',
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              const Text('أدخل رمز السر الخاص بك للدخول للحساب'),
-              const SizedBox(height: 24),
-              TextField(
-                controller: _pinController,
-                obscureText: true,
-                keyboardType: TextInputType.number,
-                maxLength: 4,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 24, letterSpacing: 8),
-                decoration: const InputDecoration(hintText: '••••'),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _verifyPin,
-                  child: const Text('دخول'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// =============================================================================
-// شاشة إنشاء الحساب والدخول التلقائي بجوجل
-// =============================================================================
-class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
-
-  @override
-  State<AuthScreen> createState() => _AuthScreenState();
-}
-
-class _AuthScreenState extends State<AuthScreen> {
+class _GlassAuthScreenState extends State<GlassAuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _usernameController = TextEditingController();
-  final _pinController = TextEditingController();
-
+  final _nameController = TextEditingController();
   bool _isRegister = false;
-  bool _isLoading = false;
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
-
-  Future<void> _signInWithGoogle() async {
-    setState(() => _isLoading = true);
-    try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser != null) {
-        final session = {
-          'uid': googleUser.id,
-          'email': googleUser.email,
-          'username': googleUser.displayName ?? 'طالب جديد',
-          'role': 'Student',
-        };
-        await LocalDB.setSession(session);
-        _registerNewInstallNotification(googleUser.displayName ?? 'مستخدم جديد');
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => MainNavigationScreen(session: session)),
-          );
-        }
-      }
-    } catch (e) {
-      _showError('خطأ أثناء الاتصال بحساب جوجل: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+  void _quickGuestLogin() async {
+    final session = {
+      'uid': 'guest_${DateTime.now().millisecondsSinceEpoch}',
+      'email': 'guest@wesam.dev',
+      'username': 'زائر مميز',
+    };
+    await LocalDB.setSession(session);
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => MainDashboardScreen(session: session)),
+      );
     }
   }
 
-  void _registerNewInstallNotification(String name) async {
-    final users = await LocalDB.getUsers();
-    users.add({
-      'name': name,
-      'date': DateTime.now().toIso8601String(),
-      'status': 'نشط ومثبت حديثاً'
-    });
-    await LocalDB.saveUsers(users);
-  }
-
-  Future<void> _submit() async {
-    setState(() => _isLoading = true);
+  void _submit() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
-    final username = _usernameController.text.trim();
-    final pin = _pinController.text.trim();
+    final name = _nameController.text.trim();
 
-    try {
-      if (_isRegister) {
-        if (pin.length < 4) {
-          _showError('الرجاء إدخال رمز سر مكون من 4 أرقام');
-          return;
-        }
-        final salt = LocalDB.generateSalt();
-        final hashed = LocalDB.hashPassword(password, salt);
-        final uid = DateTime.now().millisecondsSinceEpoch.toString();
-
-        final newUser = {
-          'uid': uid,
-          'email': email,
-          'username': username,
-          'password': hashed,
-          'salt': salt,
-        };
-
-        final users = await LocalDB.getUsers();
-        users.add(newUser);
-        await LocalDB.saveUsers(users);
-        await LocalDB.setPinCode(pin);
-
-        final session = {'uid': uid, 'email': email, 'username': username};
-        await LocalDB.setSession(session);
-        _registerNewInstallNotification(username);
-
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => MainNavigationScreen(session: session)),
-          );
-        }
-      } else {
-        final users = await LocalDB.getUsers();
-        final user = users.firstWhere((u) => u['email'] == email, orElse: () => {});
-        if (user.isEmpty) {
-          _showError('الحساب غير موجود!');
-          return;
-        }
-        final hashed = LocalDB.hashPassword(password, user['salt'] ?? '');
-        if (hashed != user['password']) {
-          _showError('كلمة المرور خاطئة');
-          return;
-        }
-        final session = {'uid': user['uid'], 'email': user['email'], 'username': user['username']};
-        await LocalDB.setSession(session);
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => MainNavigationScreen(session: session)),
-          );
-        }
-      }
-    } catch (e) {
-      _showError('حدث خطأ: $e');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('الرجاء إدخال جميع البيانات المطلوبة')),
+      );
+      return;
     }
-  }
 
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: Colors.red),
-    );
+    if (_isRegister) {
+      final salt = LocalDB.generateSalt();
+      final hashed = LocalDB.hashPassword(password, salt);
+      final uid = DateTime.now().millisecondsSinceEpoch.toString();
+
+      final users = await LocalDB.getUsers();
+      users.add({
+        'uid': uid,
+        'email': email,
+        'username': name.isEmpty ? 'مستخدم جديد' : name,
+        'password': hashed,
+        'salt': salt,
+      });
+      await LocalDB.saveUsers(users);
+
+      final session = {'uid': uid, 'email': email, 'username': name.isEmpty ? 'مستخدم جديد' : name};
+      await LocalDB.setSession(session);
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => MainDashboardScreen(session: session)),
+        );
+      }
+    } else {
+      final users = await LocalDB.getUsers();
+      final user = users.firstWhere((u) => u['email'] == email, orElse: () => {});
+      if (user.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('الحساب غير موجود! يمكنك الدخول كزائر أو إنشاء حساب')),
+        );
+        return;
+      }
+      final hashed = LocalDB.hashPassword(password, user['salt'] ?? '');
+      if (hashed != user['password']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('كلمة المرور غير صحيحة')),
+        );
+        return;
+      }
+      final session = {'uid': user['uid'], 'email': user['email'], 'username': user['username']};
+      await LocalDB.setSession(session);
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => MainDashboardScreen(session: session)),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 20),
-              Container(
-                height: 100,
-                width: 100,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFEFEAFF),
-                  shape: BoxShape.circle,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF6C5CE7), Color(0xFFA29BFE), Color(0xFF00CEC9)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Container(
+                padding: const EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.88),
+                  borderRadius: BorderRadius.circular(32),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 30,
+                      offset: const Offset(0, 15),
+                    )
+                  ],
                 ),
-                child: const Icon(Icons.code_rounded, size: 50, color: Color(0xFF5C3BFF)),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'شركة وسام للبرمجة والتعليم',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF5C3BFF)),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'منصتك الذكية لتطوير التطبيقات والتعلم الأكاديمي',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
-              ),
-              const SizedBox(height: 32),
-              if (_isRegister) ...[
-                TextField(
-                  controller: _usernameController,
-                  decoration: const InputDecoration(labelText: 'اسم المستخدم', prefixIcon: Icon(Icons.person)),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF6C5CE7),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.bolt_rounded, size: 40, color: Colors.white),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'وسام للتطوير البرمجي',
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.black, color: Color(0xFF2D3436)),
+                    ),
+                    const Text(
+                      'Wesam Software Solutions',
+                      style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 28),
+                    if (_isRegister) ...[
+                      TextField(
+                        controller: _nameController,
+                        decoration: InputDecoration(
+                          hintText: 'الاسم الكامل',
+                          prefixIcon: const Icon(Icons.person_outline),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+                    TextField(
+                      controller: _emailController,
+                      decoration: InputDecoration(
+                        hintText: 'البريد الإلكتروني',
+                        prefixIcon: const Icon(Icons.email_outlined),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        hintText: 'كلمة المرور',
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6C5CE7),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 6,
+                        ),
+                        onPressed: _submit,
+                        child: Text(
+                          _isRegister ? 'إنشاء حساب جديد' : 'تسجيل الدخول',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF6C5CE7), width: 1.5),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        onPressed: _quickGuestLogin,
+                        icon: const Icon(Icons.rocket_launch, color: Color(0xFF6C5CE7)),
+                        label: const Text('دخول سريع تجريبي', style: TextStyle(color: Color(0xFF6C5CE7), fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    GestureDetector(
+                      onTap: () => setState(() => _isRegister = !_isRegister),
+                      child: Text(
+                        _isRegister ? 'لديك حساب بالفعل؟ سجل دخولك' : 'ليس لديك حساب؟ انقر هنا للتسجيل',
+                        style: const TextStyle(color: Color(0xFF6C5CE7), fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    )
+                  ],
                 ),
-                const SizedBox(height: 12),
-              ],
-              TextField(
-                controller: _emailController,
-                decoration: const InputDecoration(labelText: 'البريد الإلكتروني', prefixIcon: Icon(Icons.email)),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'كلمة المرور', prefixIcon: Icon(Icons.lock)),
-              ),
-              const SizedBox(height: 12),
-              if (_isRegister) ...[
-                TextField(
-                  controller: _pinController,
-                  keyboardType: TextInputType.number,
-                  maxLength: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'تعيين رمز السر (PIN للوصول السريع)',
-                    prefixIcon: Icon(Icons.pin),
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
-              ElevatedButton(
-                onPressed: _isLoading ? null : _submit,
-                child: Text(_isRegister ? 'إنشاء حساب جديد' : 'تسجيل الدخول'),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 50)),
-                icon: const Icon(Icons.g_mobiledata, size: 30, color: Colors.red),
-                label: const Text('تسجيل الدخول بقوقل (للطلاب مباشرة)'),
-                onPressed: _isLoading ? null : _signInWithGoogle,
-              ),
-              TextButton(
-                onPressed: () => setState(() => _isRegister = !_isRegister),
-                child: Text(_isRegister ? 'لديك حساب بالفعل؟ سجل دخولك' : 'تريد إنشاء حساب جديد؟ اضغط هنا'),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -479,103 +374,310 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 }
 
-// =============================================================================
-// الشاشة الرئيسية المتكاملة والشريط السفلي
-// =============================================================================
-class MainNavigationScreen extends StatefulWidget {
+/* ==================== الشاشة الرئيسية الخرافية ==================== */
+class MainDashboardScreen extends StatefulWidget {
   final Map<String, dynamic> session;
-  const MainNavigationScreen({super.key, required this.session});
+  const MainDashboardScreen({super.key, required this.session});
 
   @override
-  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
+  State<MainDashboardScreen> createState() => _MainDashboardScreenState();
 }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _selectedIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _showWelcomeDialog());
-  }
-
-  // رسالة ترحيب تلقائية عند فتح التطبيق
-  void _showWelcomeDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.auto_awesome, color: Color(0xFF5C3BFF)),
-            SizedBox(width: 8),
-            Text('مرحباً بك!'),
-          ],
-        ),
-        content: Text(
-          'أهلاً بك في شركة وسام للبرمجة والتعليم البرمجي.\nيسعدنا انضمامك معنا للاستفادة من خدماتنا التكنولوجية والكورسات التعليمية.',
-          style: TextStyle(color: Colors.grey.shade800),
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('ابدأ الاستكشاف'),
-          ),
-        ],
-      ),
-    );
-  }
+class _MainDashboardScreenState extends State<MainDashboardScreen> {
+  int _currentIndex = 0;
 
   @override
   Widget build(BuildContext context) {
-    final screens = [
+    final tabs = [
+      HomeTab(session: widget.session),
+      const ServicesTab(),
       ChatTab(session: widget.session),
-      const LearningTab(),
-      const PortfolioTab(),
-      const TeamTab(),
-      const UsersDashboardTab(),
+      const ProfileTab(),
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('شركة وسام للبرمجة', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF5C3BFF))),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.redAccent),
-            onPressed: () async {
-              await LocalDB.setSession(null);
-              if (context.mounted) {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const AuthScreen()),
-                  (route) => false,
-                );
-              }
-            },
-          )
-        ],
+      body: tabs[_currentIndex],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 20, offset: const Offset(0, -5))
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) => setState(() => _currentIndex = index),
+          selectedItemColor: const Color(0xFF6C5CE7),
+          unselectedItemColor: Colors.grey.shade400,
+          showUnselectedLabels: true,
+          type: BottomNavigationBarType.fixed,
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.grid_view_rounded), label: 'الرئيسية'),
+            BottomNavigationBarItem(icon: Icon(Icons.widgets_rounded), label: 'الخدمات'),
+            BottomNavigationBarItem(icon: Icon(Icons.forum_rounded), label: 'المحادثة'),
+            BottomNavigationBarItem(icon: Icon(Icons.person_pin_rounded), label: 'الملف الشخصي'),
+          ],
+        ),
       ),
-      body: screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (i) => setState(() => _selectedIndex = i),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF5C3BFF),
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble), label: 'الدردشة'),
-          BottomNavigationBarItem(icon: Icon(Icons.school), label: 'التعليم'),
-          BottomNavigationBarItem(icon: Icon(Icons.work), label: 'أعمالنا'),
-          BottomNavigationBarItem(icon: Icon(Icons.groups), label: 'الفريق'),
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'المشتركون'),
+    );
+  }
+}
+
+/* ==================== تبويب الرئيسية ==================== */
+class HomeTab extends StatelessWidget {
+  final Map<String, dynamic> session;
+  const HomeTab({super.key, required this.session});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF6C5CE7), Color(0xFFA29BFE)],
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+              ),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(36),
+                bottomRight: Radius.circular(36),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('مرحباً بك 👋', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                        Text(
+                          session['username'] ?? 'الزائر',
+                          style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.3), shape: BoxShape.circle),
+                      child: const CircleAvatar(
+                        radius: 24,
+                        backgroundColor: Colors.white,
+                        child: Icon(Icons.person, color: Color(0xFF6C5CE7)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                // بطاقة إحصائيات زجاجية
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: Colors.white.withOpacity(0.3)),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _StatItem(number: '+15', label: 'مشروع ناجح'),
+                      _StatDivider(),
+                      _StatItem(number: '100%', label: 'دعم فني'),
+                      _StatDivider(),
+                      _StatItem(number: 'v1.0', label: 'الإصدار'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.all(20),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate([
+              const Text('خدماتنا السريعة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2D3436))),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(child: _QuickCard(icon: Icons.mobile_friendly, title: 'تطبيقات الجوال', color: const Color(0xFF00CEC9))),
+                  const SizedBox(width: 12),
+                  Expanded(child: _QuickCard(icon: Icons.computer, title: 'أنظمة سطح المكتب', color: const Color(0xFFFF7675))),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(child: _QuickCard(icon: Icons.storage_rounded, title: 'قواعد البيانات', color: const Color(0xFF6C5CE7))),
+                  const SizedBox(width: 12),
+                  Expanded(child: _QuickCard(icon: Icons.school_rounded, title: 'الدورات البرمجية', color: const Color(0xFFFDCB6E))),
+                ],
+              ),
+              const SizedBox(height: 28),
+              const Text('أحدث الأعمال والأنظمة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2D3436))),
+              const SizedBox(height: 14),
+              _ProjectCard(
+                title: 'تطبيق WesamPhone المحلي',
+                desc: 'تطبيق درشات وأنظمة متكاملة تعمل بدون الحاجة لإنترنت خارجي وبأعلى معايير الأمان.',
+                icon: Icons.chat_bubble_outline_rounded,
+                color: const Color(0xFF6C5CE7),
+              ),
+              const SizedBox(height: 12),
+              _ProjectCard(
+                title: 'نظام إدارة المراكز والمستشفيات',
+                desc: 'نظام إلكتروني شامل لإدارة المستشفيات، العيادات، الطوارئ والحسابات.',
+                icon: Icons.local_hospital_outlined,
+                color: const Color(0xFF00CEC9),
+              ),
+            ]),
+          ),
+        )
+      ],
+    );
+  }
+}
+
+/* ==================== عناصر الواجهة الصغيرة ==================== */
+class _StatItem extends StatelessWidget {
+  final String number;
+  final String label;
+  const _StatItem({required this.number, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(number, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11)),
+      ],
+    );
+  }
+}
+
+class _StatDivider extends StatelessWidget {
+  const _StatDivider();
+  @override
+  Widget build(BuildContext context) {
+    return Container(height: 24, width: 1, color: Colors.white30);
+  }
+}
+
+class _QuickCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final Color color;
+
+  const _QuickCard({required this.icon, required this.title, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(14)),
+            child: Icon(icon, color: color, size: 26),
+          ),
+          const SizedBox(height: 12),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
         ],
       ),
     );
   }
 }
 
-// =============================================================================
-// 1. قسم الدردشة والتواصل
-// =============================================================================
+class _ProjectCard extends StatelessWidget {
+  final String title;
+  final String desc;
+  final IconData icon;
+  final Color color;
+
+  const _ProjectCard({required this.title, required this.desc, required this.icon, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 15, offset: const Offset(0, 5))],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(18)),
+            child: Icon(icon, color: color, size: 30),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                const SizedBox(height: 4),
+                Text(desc, style: TextStyle(color: Colors.grey.shade600, fontSize: 12, height: 1.4)),
+              ],
+            ),
+          )
+        ],
+      ),
+    );
+  }
+}
+
+/* ==================== باقي التبويبات ==================== */
+class ServicesTab extends StatelessWidget {
+  const ServicesTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('الخدمات والكورسات', style: TextStyle(fontWeight: FontWeight.bold))),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          _serviceTile('تطوير البرمجيات بحسب الطلب', 'تصميم وبناء كافة التطبيقات والمواقع بأعلى جودة.', Icons.code_rounded),
+          _serviceTile('دورات تعليمية في C++ & Flutter', 'شروحات أكاديمية وتطبيقات عملية متكاملة.', Icons.school_rounded),
+          _serviceTile('تصميم واستعلامات SQL & Oracle', 'بناء وتصميم الجداول والمخططات وقواعد البيانات.', Icons.storage_rounded),
+        ],
+      ),
+    );
+  }
+
+  Widget _serviceTile(String title, String sub, IconData icon) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: CircleAvatar(backgroundColor: const Color(0xFF6C5CE7).withOpacity(0.1), child: Icon(icon, color: const Color(0xFF6C5CE7))),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(sub),
+      ),
+    );
+  }
+}
+
 class ChatTab extends StatefulWidget {
   final Map<String, dynamic> session;
   const ChatTab({super.key, required this.session});
@@ -614,197 +716,106 @@ class _ChatTabState extends State<ChatTab> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: _messages.length,
-            itemBuilder: (context, i) {
-              final m = _messages[i];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  title: Text(m['username'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF5C3BFF))),
-                  subtitle: Text(m['text'] ?? ''),
-                  trailing: Text(m['time'] ?? '', style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                ),
-              );
-            },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Row(
-            children: [
-              Expanded(child: TextField(controller: _msgController, decoration: const InputDecoration(hintText: 'اكتب استفسارك هنا...'))),
-              const SizedBox(width: 8),
-              IconButton(icon: const Icon(Icons.send, color: Color(0xFF5C3BFF)), onPressed: _send),
-            ],
-          ),
-        )
-      ],
-    );
-  }
-}
-
-// =============================================================================
-// 2. قسم تعليم أساسيات البرمجة
-// =============================================================================
-class LearningTab extends StatelessWidget {
-  const LearningTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final courses = [
-      {'title': 'أساسيات Flutter & Dart', 'level': 'مبتدئ', 'lessons': '12 درس', 'icon': Icons.flutter_dash},
-      {'title': 'أساسيات البرمجة بـ C++', 'level': 'مبتدئ إلى متوسط', 'lessons': '20 درس', 'icon': Icons.code},
-      {'title': 'قواعد البيانات SQL & Oracle', 'level': 'متوسط', 'lessons': '15 درس', 'icon': Icons.storage},
-      {'title': 'تطوير تطبيقات الويب React', 'level': 'متقدم', 'lessons': '18 درس', 'icon': Icons.web},
-    ];
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: courses.length,
-      itemBuilder: (context, i) {
-        final c = courses[i];
-        return Card(
-          elevation: 3,
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: CircleAvatar(backgroundColor: const Color(0xFFEFEAFF), child: Icon(c['icon'] as IconData, color: const Color(0xFF5C3BFF))),
-            title: Text(c['title'] as String, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('المستوى: ${c['level']} • ${c['lessons']}'),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('تم فتح مسار: ${c['title']}')),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-}
-
-// =============================================================================
-// 3. قسم أعمالنا
-// =============================================================================
-class PortfolioTab extends StatelessWidget {
-  const PortfolioTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: const [
-        Card(
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('نظام إدارة المستشفيات والمراكز الطبية', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF5C3BFF))),
-                SizedBox(height: 8),
-                Text('نظام متكامل لإدارة العيادات، الطوارئ، الصيدليات وقواعد البيانات الضخمة.'),
-              ],
-            ),
-          ),
-        ),
-        SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('تطبيق WesamPhone للشبكات المحلية', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF5C3BFF))),
-                SizedBox(height: 8),
-                Text('تطبيق محادثة ونقل بيانات متطور يعتمد التخزين المحلي الآمن.'),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// =============================================================================
-// 4. قسم الفريق المختص
-// =============================================================================
-class TeamTab extends StatelessWidget {
-  const TeamTab({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final team = [
-      {'name': 'وسام محمد الجمالي', 'role': 'كبير مهندسي البرمجيات والمؤسس', 'tech': 'Flutter, C++, Oracle'},
-      {'name': 'فريق الدعم الفني والتعليم', 'role': 'إشراف ومتابعة الطلاب', 'tech': 'Python, SQL, Web'},
-    ];
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: team.length,
-      itemBuilder: (context, i) {
-        final t = team[i];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: const CircleAvatar(child: Icon(Icons.person)),
-            title: Text(t['name']!, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('${t['role']}\nالتقنيات: ${t['tech']}'),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// =============================================================================
-// 5. شاشة المشتركين الجدد والتحقق من التثبيت
-// =============================================================================
-class UsersDashboardTab extends StatefulWidget {
-  const UsersDashboardTab({super.key});
-
-  @override
-  State<UsersDashboardTab> createState() => _UsersDashboardTabState();
-}
-
-class _UsersDashboardTabState extends State<UsersDashboardTab> {
-  List<Map<String, dynamic>> _users = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUsers();
-  }
-
-  void _loadUsers() async {
-    final users = await LocalDB.getUsers();
-    setState(() => _users = users);
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
-      body: _users.isEmpty
-          ? const Center(child: Text('لا يوجد مشتركين مسجلين حالياً'))
-          : ListView.builder(
+      appBar: AppBar(title: const Text('غرفة المحادثة المحلية', style: TextStyle(fontWeight: FontWeight.bold))),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: _users.length,
+              itemCount: _messages.length,
               itemBuilder: (context, i) {
-                final u = _users[i];
-                return Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.verified_user, color: Colors.green),
-                    title: Text(u['name'] ?? u['username'] ?? 'مستخدم جديد'),
-                    subtitle: Text('حالة التثبيت: ${u['status'] ?? 'مسجل ومثبت التطبيق'}'),
+                final m = _messages[i];
+                final isMe = m['username'] == widget.session['username'];
+                return Align(
+                  alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isMe ? const Color(0xFF6C5CE7) : Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 5)],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(m['username'] ?? '', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: isMe ? Colors.white70 : const Color(0xFF6C5CE7))),
+                        const SizedBox(height: 4),
+                        Text(m['text'] ?? '', style: TextStyle(color: isMe ? Colors.white : Colors.black87)),
+                      ],
+                    ),
                   ),
                 );
               },
             ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _msgController,
+                    decoration: InputDecoration(
+                      hintText: 'اكتب رسالتك...',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                CircleAvatar(
+                  radius: 25,
+                  backgroundColor: const Color(0xFF6C5CE7),
+                  child: IconButton(icon: const Icon(Icons.send, color: Colors.white, size: 20), onPressed: _send),
+                )
+              ],
+            ),
+          )
+        ],
+      ),
+    );
+  }
+}
+
+class ProfileTab extends StatelessWidget {
+  const ProfileTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('الملف الشخصي', style: TextStyle(fontWeight: FontWeight.bold))),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircleAvatar(radius: 45, backgroundColor: Color(0xFF6C5CE7), child: Icon(Icons.person, size: 50, color: Colors.white)),
+              const SizedBox(height: 16),
+              const Text('وسام محمد الجمالي', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const Text('مطوّر ومبتكر أنظمة برمجية', style: TextStyle(color: Colors.grey)),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                  icon: const Icon(Icons.logout, color: Colors.white),
+                  label: const Text('تسجيل الخروج', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  onPressed: () async {
+                    await LocalDB.setSession(null);
+                    if (context.mounted) {
+                      Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const GlassAuthScreen()), (route) => false);
+                    }
+                  },
+                ),
+              )
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
