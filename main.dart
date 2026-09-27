@@ -4,9 +4,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// === الاستيرادات المهمة التي كانت مفقودة وتسببت بالخطأ ===
+// استيراد الحزم
 import 'package:firebase_core/firebase_core.dart';
-import 'package0:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
 /* ==================== دالة التشغيل الرئيسية ==================== */
@@ -170,7 +170,7 @@ class KnowledgeBase {
     {
       'title': 'أساسيات C++ والمؤشرات (Pointers)',
       'category': 'لغات البرمجة',
-      'target': 'ل للمبتدئين والطلاب',
+      'target': 'للمبتدئين والطلاب',
       'content': 'تغطي لغة C++ إدارة الذاكرة المباشرة عبر الـ Pointers والـ Dynamic Memory Allocation.'
     },
     {
@@ -194,7 +194,7 @@ class KnowledgeBase {
     {
       'title': 'أنظمة إدارة الصيدليات والمستشفيات',
       'category': 'أنظمة المؤسسات',
-      'target': 'للمستخدمين والشركات',
+      'target': 'ل للمستخدمين والشركات',
       'content': 'حلول برمجية لإدارة السجلات الطبية، المبيعات، المخزون، والفواتير.'
     },
     {
