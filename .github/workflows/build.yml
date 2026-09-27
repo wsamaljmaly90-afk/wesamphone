@@ -13,7 +13,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.3'
+          channel: 'stable'
 
       - name: Prepare Project Structure & Dependencies
         run: |
@@ -21,6 +21,10 @@ jobs:
           if [ -f main.dart ]; then cp main.dart backup_code/; fi
           flutter create . --overwrite
           if [ -f backup_code/main.dart ]; then cp backup_code/main.dart lib/main.dart; fi
+          
+          # استبدال الكلمة الخاطئة تلقائياً في السيرفر أثناء البناء
+          sed -i 's/FontWeight.black/FontWeight.w900/g' lib/main.dart
+          
           flutter pub add shared_preferences crypto
 
       - name: Install dependencies
