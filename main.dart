@@ -3,10 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:crypto/crypto.dart';
 
-// مكتبات الخادم وتتبع الجهاز تلقائياً
-import 'package:firebase_core/firebase_core.dart';
+// استيراد المكتبات الناقصة
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
