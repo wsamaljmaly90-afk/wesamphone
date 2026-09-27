@@ -1,5 +1,5 @@
 name: wesamphone
-description: "WesamPhone - تطبيق دردشة جماعية باللغة العربية (وضع محلي - بدون Firebase)"
+description: WesamPhone Local Chat App
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -10,9 +10,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
-  shared_preferences: ^2.3.2
-  crypto: ^3.0.5
+  shared_preferences: ^2.2.2
+  crypto: ^3.0.3
+  google_sign_in: ^6.2.1
+  ota_update: ^5.0.1
 
 dev_dependencies:
   flutter_test:
@@ -21,3 +22,4 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
