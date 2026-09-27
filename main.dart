@@ -4,9 +4,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// استيراد مكتبات Firebase وجلب معلومات الجهاز
+// === الاستيرادات المهمة التي كانت مفقودة وتسببت بالخطأ ===
 import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package0:cloud_firestore/cloud_firestore.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
 /* ==================== دالة التشغيل الرئيسية ==================== */
@@ -170,7 +170,7 @@ class KnowledgeBase {
     {
       'title': 'أساسيات C++ والمؤشرات (Pointers)',
       'category': 'لغات البرمجة',
-      'target': 'للمبتدئين والطلاب',
+      'target': 'ل للمبتدئين والطلاب',
       'content': 'تغطي لغة C++ إدارة الذاكرة المباشرة عبر الـ Pointers والـ Dynamic Memory Allocation.'
     },
     {
@@ -624,7 +624,7 @@ class _UniversalSearchTabState extends State<UniversalSearchTab> {
                         elevation: 0,
                         color: Colors.white,
                         child: ListTile(
-                          contentPadding: const EdgeInsets.all(16), // تم الإصلاح هنا ليتوافق مع Flutter
+                          contentPadding: const EdgeInsets.all(16),
                           title: Text(item['title']!, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6C5CE7))),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
