@@ -4,7 +4,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// استيراد المكتبات الناقصة
+// استيراد مكتبات Firebase وجلب معلومات الجهاز
+import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 
@@ -12,11 +13,10 @@ import 'package:device_info_plus/device_info_plus.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // تهيئة الاتصال بالخادم السحابي مع معالجة الاستثناءات
   try {
     await Firebase.initializeApp();
   } catch (e) {
-    debugPrint('ملاحظة: تعذر تهيئة Firebase (تأكد من إضافة google-services.json): $e');
+    debugPrint('ملاحظة: تعذر تهيئة Firebase: $e');
   }
 
   runApp(const WesamEnterpriseApp());
@@ -27,7 +27,6 @@ class ServerLogger {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
   static final DeviceInfoPlugin _deviceInfo = DeviceInfoPlugin();
 
-  /// تسجيل الجهاز والاسم تلقائياً وبصمت دون طلب أي بيانات فنية من المستخدم
   static Future<void> autoRegisterDevice(String username) async {
     try {
       String deviceModel = 'غير معروف';
@@ -35,13 +34,12 @@ class ServerLogger {
       String androidVersion = 'غير معروف';
       String deviceId = DateTime.now().millisecondsSinceEpoch.toString();
 
-      // جلب معلومات الهاتف تلقائياً وخلف الكواليس
       if (Platform.isAndroid) {
         AndroidDeviceInfo androidInfo = await _deviceInfo.androidInfo;
-        deviceModel = androidInfo.model;         // مثال: Galaxy S23 Ultra / Redmi Note 11
-        deviceBrand = androidInfo.brand;         // مثال: Samsung / Xiaomi / HUAWEI
-        androidVersion = androidInfo.version.release; // مثال: Android 13 / 14
-        deviceId = androidInfo.id;               // المعرف البرمجي الفريد للجهاز
+        deviceModel = androidInfo.model;
+        deviceBrand = androidInfo.brand;
+        androidVersion = androidInfo.version.release;
+        deviceId = androidInfo.id;
       } else if (Platform.isIOS) {
         IosDeviceInfo iosInfo = await _deviceInfo.iosInfo;
         deviceModel = iosInfo.utsname.machine;
@@ -50,7 +48,6 @@ class ServerLogger {
         deviceId = iosInfo.identifierForVendor ?? deviceId;
       }
 
-      // إرسال ونشر البيانات إلى لوحة تحكم الخادم السحابية
       await _db.collection('app_users').doc(deviceId).set({
         'username': username,
         'deviceBrand': deviceBrand,
@@ -60,14 +57,11 @@ class ServerLogger {
         'installedAt': FieldValue.serverTimestamp(),
         'lastActive': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-
-      debugPrint('تم رفع بيانات تثبيت الجهاز تلقائياً للخادم: $deviceBrand $deviceModel');
     } catch (e) {
-      debugPrint('خطأ في مزامنة البيانات مع الخادم: $e');
+      debugPrint('خطأ في مزامنة البيانات: $e');
     }
   }
 
-  /// تحديث بيانات الملف الشخصي تلقائياً في الخادم عند حفظها
   static Future<void> syncProfileToServer(Map<String, String> profile) async {
     try {
       String deviceId = '';
@@ -83,7 +77,7 @@ class ServerLogger {
         }, SetOptions(merge: true));
       }
     } catch (e) {
-      debugPrint('خطأ في تحديث البروفايل على الخادم: $e');
+      debugPrint('خطأ في تحديث البروفايل: $e');
     }
   }
 }
@@ -149,11 +143,11 @@ class LocalDB {
     final raw = prefs.getString(_kProfile);
     if (raw == null || raw.isEmpty) {
       return {
-        'name': 'وسام الجمالي',
-        'email': '',
-        'role': 'مطور رئيسي / أخصائي أنظمة',
-        'phone': '+967 778004640',
-        'bio': 'خبير في بناء الحلول البرمجية، أنظمة سطح المكتب، قواعد البيانات وتطبيقات الجوال.',
+        'name': 'مستخدم جديد',
+        'email': 'user@example.com',
+        'role': 'مطور / أخصائي أنظمة',
+        'phone': '+967 000000000',
+        'bio': 'الحلول البرمجية، أنظمة سطح المكتب، قواعد البيانات وتطبيقات الجوال.',
       };
     }
     try {
@@ -166,7 +160,6 @@ class LocalDB {
   static Future<void> saveProfile(Map<String, String> profile) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kProfile, json.encode(profile));
-    // مزامنة الملف الشخصي مع الخادم أيضاً
     ServerLogger.syncProfileToServer(profile);
   }
 }
@@ -178,37 +171,37 @@ class KnowledgeBase {
       'title': 'أساسيات C++ والمؤشرات (Pointers)',
       'category': 'لغات البرمجة',
       'target': 'للمبتدئين والطلاب',
-      'content': 'تغطي لغة C++ إدارة الذاكرة المباشرة عبر الـ Pointers والـ Dynamic Memory Allocation. تعتمد الكليات والأكاديميات على هذه اللغة لبناء المفاهيم الهيكلية ومصفوفات البيانات.'
+      'content': 'تغطي لغة C++ إدارة الذاكرة المباشرة عبر الـ Pointers والـ Dynamic Memory Allocation.'
     },
     {
       'title': 'تطوير التطبيقات عبر Flutter & Dart',
       'category': 'تطوير الجوال',
       'target': 'للمتوسطين والمحترفين',
-      'content': 'إطار عمل Flutter يسمح لك ببناء تطبيقات ذات كود موحد يعمل على Android و iOS و Desktop. يوفر أداءً عالياً بفضل محرك Skia/Impeller وتجميع الكود المباشر Native.'
+      'content': 'إطار عمل Flutter يسمح لك ببناء تطبيقات ذات كود موحد يعمل على Android و iOS و Desktop.'
     },
     {
       'title': 'تصميم قواعد البيانات العلاقية (RDBMS & SQL)',
       'category': 'قواعد البيانات',
       'target': 'للجميع',
-      'content': 'شرح المخططات الهيكلية (ERD)، العلاقات (1-to-N, N-to-M)، صياغة المفاتيح الأساسية والأجنبية (Primary & Foreign Keys)، والاستعلامات المعقدة في Oracle و MySQL.'
+      'content': 'شرح المخططات الهيكلية (ERD)، العلاقات (1-to-N, N-to-M)، صياغة المفاتيح الأساسية والأجنبية.'
     },
     {
       'title': 'الذكاء الاصطناعي وتعلم الآلة (Python AI)',
       'category': 'الذكاء الاصطناعي',
       'target': 'للباحثين والدكاترة',
-      'content': 'استخدام مكتبات Python المتقدمة مثل NumPy, Pandas, Scikit-Learn و TensorFlow للتحليل الأحصائي ومعالجة البيانات وبناء النماذج التنبؤية.'
+      'content': 'استخدام مكتبات Python المتقدمة مثل NumPy, Pandas, Scikit-Learn و TensorFlow.'
     },
     {
       'title': 'أنظمة إدارة الصيدليات والمستشفيات',
       'category': 'أنظمة المؤسسات',
       'target': 'للمستخدمين والشركات',
-      'content': 'حلول برمجية لإدارة السجلات الطبية، المبيعات، المخزون، والفواتير مع نظام الصلاحيات المتعددة للطباء والموظفين.'
+      'content': 'حلول برمجية لإدارة السجلات الطبية، المبيعات، المخزون، والفواتير.'
     },
     {
       'title': 'الربط الشبكي المحلي وبروتوكولات Socket',
       'category': 'الشبكات والأمان',
       'target': 'للمتقدمين والمهندسين',
-      'content': 'بناء تطبيقات محادثة ونقل بيانات داخل الشبكات المغلقة (LAN) باستخدام TCP/IP Sockets دون الحاجة لاتصال بإنترنت خارجي.'
+      'content': 'بناء تطبيقات محادثة ونقل بيانات داخل الشبكات المغلقة (LAN) باستخدام TCP/IP Sockets.'
     },
   ];
 
@@ -245,7 +238,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
   void _checkSession() async {
     final session = await LocalDB.getSession();
     if (session != null) {
-      // مزامنة حالة النشاط التلقائية إذا كان المستخدم مسجلاً بالفعل
       ServerLogger.autoRegisterDevice(session['username'] ?? 'مستخدم محلي');
     }
     if (mounted) {
@@ -290,10 +282,7 @@ class _GlassAuthScreenState extends State<GlassAuthScreen> {
       'loginAt': DateTime.now().toString(),
     };
     
-    // 1. حفظ الجلسة محلياً
     await LocalDB.setSession(session);
-    
-    // 2. تسجيل الجهاز والمستخدم في الخادم السحابي تلقائياً وبصمت
     await ServerLogger.autoRegisterDevice(username);
 
     if (mounted) {
@@ -635,7 +624,7 @@ class _UniversalSearchTabState extends State<UniversalSearchTab> {
                         elevation: 0,
                         color: Colors.white,
                         child: ListTile(
-                          padding: const EdgeInsets.all(16),
+                          contentPadding: const EdgeInsets.all(16), // تم الإصلاح هنا ليتوافق مع Flutter
                           title: Text(item['title']!, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6C5CE7))),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -735,7 +724,7 @@ class _AIChatTabState extends State<AIChatTab> {
     });
 
     Timer(const Duration(milliseconds: 500), () {
-      String ans = 'تم استلام استفسارك حول: "$t". يقوم محرك الرد الآلي بفهرسة الإجابة وسنقوم بتزويدك بتفاصيلها. يمكنك أيضاً التواصل مع الفريق المعتمد.';
+      String ans = 'تم استلام استفسارك حول: "$t". يقوم محرك الرد الآلي بفهرسة الإجابة وسنقوم بتزويدك بتفاصيلها.';
       if (t.contains('برمجة') || t.contains('كود')) {
         ans = 'لدينا قسم كامل للبرمجة يشمل C++, Flutter, Python, و SQL. يمكنك استخدام محرك البحث الشامل للوصول لكافة الشروحات!';
       } else if (t.contains('فريق') || t.contains('دعم')) {
@@ -852,7 +841,7 @@ class _ProfileTabState extends State<ProfileTab> {
     };
     await LocalDB.saveProfile(updated);
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حفظ بيانات ملفك الشخصي ومزامنتها بنجاح!')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حفظ بيانات ملفك الشخصي بنجاح!')));
     }
   }
 
@@ -870,7 +859,7 @@ class _ProfileTabState extends State<ProfileTab> {
             const SizedBox(height: 16),
             TextField(controller: _nameC, decoration: const InputDecoration(labelText: 'الاسم الكامل', prefixIcon: Icon(Icons.person_outline))),
             const SizedBox(height: 12),
-            TextField(controller: _roleC, decoration: const InputDecoration(labelText: 'الصفة / التخصص (طالب، دكتور، مطور)', prefixIcon: Icon(Icons.badge_outlined))),
+            TextField(controller: _roleC, decoration: const InputDecoration(labelText: 'الصفة / التخصص', prefixIcon: Icon(Icons.badge_outlined))),
             const SizedBox(height: 12),
             TextField(controller: _phoneC, decoration: const InputDecoration(labelText: 'رقم الهاتف', prefixIcon: Icon(Icons.phone_outlined))),
             const SizedBox(height: 12),
