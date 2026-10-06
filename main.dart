@@ -1,85 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// استيراد الحزم
-import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:device_info_plus/device_info_plus.dart';
-
 /* ==================== دالة التشغيل الرئيسية ==================== */
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  try {
-    await Firebase.initializeApp();
-  } catch (e) {
-    debugPrint('ملاحظة: تعذر تهيئة Firebase: $e');
-  }
-
   runApp(const WesamEnterpriseApp());
-}
-
-/* ==================== كلاس التسجيل التلقائي في الخادم ==================== */
-class ServerLogger {
-  static final FirebaseFirestore _db = FirebaseFirestore.instance;
-  static final DeviceInfoPlugin _deviceInfo = DeviceInfoPlugin();
-
-  static Future<void> autoRegisterDevice(String username) async {
-    try {
-      String deviceModel = 'غير معروف';
-      String deviceBrand = 'غير معروف';
-      String androidVersion = 'غير معروف';
-      String deviceId = DateTime.now().millisecondsSinceEpoch.toString();
-
-      if (Platform.isAndroid) {
-        AndroidDeviceInfo androidInfo = await _deviceInfo.androidInfo;
-        deviceModel = androidInfo.model;
-        deviceBrand = androidInfo.brand;
-        androidVersion = androidInfo.version.release;
-        deviceId = androidInfo.id;
-      } else if (Platform.isIOS) {
-        IosDeviceInfo iosInfo = await _deviceInfo.iosInfo;
-        deviceModel = iosInfo.utsname.machine;
-        deviceBrand = 'Apple';
-        androidVersion = iosInfo.systemVersion;
-        deviceId = iosInfo.identifierForVendor ?? deviceId;
-      }
-
-      await _db.collection('app_users').doc(deviceId).set({
-        'username': username,
-        'deviceBrand': deviceBrand,
-        'deviceModel': deviceModel,
-        'osVersion': androidVersion,
-        'platform': Platform.isAndroid ? 'Android' : 'iOS',
-        'installedAt': FieldValue.serverTimestamp(),
-        'lastActive': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-    } catch (e) {
-      debugPrint('خطأ في مزامنة البيانات: $e');
-    }
-  }
-
-  static Future<void> syncProfileToServer(Map<String, String> profile) async {
-    try {
-      String deviceId = '';
-      if (Platform.isAndroid) {
-        AndroidDeviceInfo androidInfo = await _deviceInfo.androidInfo;
-        deviceId = androidInfo.id;
-      }
-
-      if (deviceId.isNotEmpty) {
-        await _db.collection('app_users').doc(deviceId).set({
-          'profileData': profile,
-          'lastActive': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-      }
-    } catch (e) {
-      debugPrint('خطأ في تحديث البروفايل: $e');
-    }
-  }
 }
 
 /* ==================== التطبيق الرئيسي والتنسيق ==================== */
@@ -160,7 +87,6 @@ class LocalDB {
   static Future<void> saveProfile(Map<String, String> profile) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kProfile, json.encode(profile));
-    ServerLogger.syncProfileToServer(profile);
   }
 }
 
@@ -194,7 +120,7 @@ class KnowledgeBase {
     {
       'title': 'أنظمة إدارة الصيدليات والمستشفيات',
       'category': 'أنظمة المؤسسات',
-      'target': 'ل للمستخدمين والشركات',
+      'target': 'للمستخدمين والشركات',
       'content': 'حلول برمجية لإدارة السجلات الطبية، المبيعات، المخزون، والفواتير.'
     },
     {
@@ -237,9 +163,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   void _checkSession() async {
     final session = await LocalDB.getSession();
-    if (session != null) {
-      ServerLogger.autoRegisterDevice(session['username'] ?? 'مستخدم محلي');
-    }
     if (mounted) {
       setState(() {
         _session = session;
@@ -283,7 +206,6 @@ class _GlassAuthScreenState extends State<GlassAuthScreen> {
     };
     
     await LocalDB.setSession(session);
-    await ServerLogger.autoRegisterDevice(username);
 
     if (mounted) {
       Navigator.pushReplacement(
